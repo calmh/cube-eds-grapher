@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+            div#gauges {
+                height: 300px;
+            }
+            div#gauge {
+                width: 300px;
+                /* height will be 0.575 * width */
+                float: left;
+            }
+            div#power, div#temp {
+                width: 500px;
+                height: 80px;
+                margin: 5px;
+                float: left;
+            }
+            .centerLabel, .percentile {
+                font-family: Helvetica, Verdana, sans-serif;
+                text-anchor: middle;
+                font-weight: 300;
+            }
+            .centerLabel{
+                fill: #888;
+            }
+            .percentile {
+                fill: #bbb;
+            }
+            path.area {
+                fill: #eee;
+            }
+            path.line {
+                stroke: #666;
+                fill: none;
+                stroke-width: 1.5px;
+            }
+        </style>
+        <title></title>
+        <script type="text/javascript" src="http://mbostock.github.com/d3/d3.js?2.5.0"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js" type="text/javascript"></script>
+    </head>
+    <body>
+        <div id="gauges">
+            <div id="gauge"></div>
+            <div id="power" class='lineGraph'></div>
+            <div id="temp" class='lineGraph'></div>
+        </div>
+    </body>
+    <script type="text/javascript" src="app.js"></script>
+</html>
