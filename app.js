@@ -2,8 +2,21 @@ var percentiles;
 var donut, arcs, svg, label, percentileLabel, maxArc;
 var p = 0.015;
 var r, arc, arc2, arc3;
-var pointerColor = d3.scale.linear().range(['green', 'yellow', 'red']);
-var cubeServer = 'http://zenv.nym.se:1081';
+var pointerColor = d3.scale.linear().range(['green', 'green', 'red']);
+var cubeServer;
+var candidates =  [ 'http://zenv.nym.se:1081', 'http://ext.nym.se:1081' ];
+
+function probe(cb) {
+    var found = false;
+    candidates.forEach(function (cand) {
+        d3.json(cand + '/1.0/metric?expression=sum(reading(impulses))&step=3e5&limit=1', function(data) {
+            if (!found && data && data[0] && data[0].value) {
+                found = true;
+                cb(cand);
+            }
+        });
+    });
+}
 
 function load() {
     d3.json(cubeServer + '/1.0/metric?expression=sum(reading(impulses))*3600%2f300&step=3e5&limit=288',
@@ -24,7 +37,7 @@ function load() {
 }
 
 function instant(callback) {
-    d3.json(cubeServer + '/1.0/metric?expression=sum(reading(impulses))&step=1e4&limit=18',
+    d3.json(cubeServer + '/1.0/metric?expression=sum(reading(impulses))&step=1e4&limit=12',
             function(data) {
                 var vals = data.map(function (d) { return d.value; });
                 var sum = vals.reduce(function (a, b) { return a + b; }, 0);
@@ -98,8 +111,8 @@ function tween(d, i, a) {
 }
 
 function lines(url, tag) {
-    var w = $(tag).width();
-    var h = $(tag).height();
+    var w = $('#' + tag).width();
+    var h = $('#' + tag).height();
     //var w = 640;
     //var h = 120;
     // Scales. Note the inverted domain for the y-scale: bigger is up!
@@ -132,7 +145,10 @@ function lines(url, tag) {
         x.domain([data[0].time, data[data.length - 1].time]);
         y.domain([0, maxVal]).nice();
 
-        var svg = d3.select(tag).append("svg:svg")
+        d3.select('#' + tag + '-svg').remove();
+
+        var svg = d3.select('#' + tag).append("svg:svg")
+        .attr('id', tag + '-svg')
         .attr('width', w)
         .attr('height', h);
 
@@ -153,58 +169,62 @@ function lines(url, tag) {
 }
 
 function updateLines() {
-    lines(cubeServer + '/1.0/metric?expression=sum(reading(impulses))*3600%2f300&step=3e5&limit=288', 'div#power');
-    lines(cubeServer + '/1.0/metric?expression=median(reading(temperature))&step=3e5&limit=288', 'div#temp');
+    lines(cubeServer + '/1.0/metric?expression=sum(reading(impulses))*3600%2f300&step=6e4&limit=288', 'power');
+    lines(cubeServer + '/1.0/metric?expression=median(reading(temperature))&step=6e4&limit=288', 'temp');
 }
 
 $(document).ready(function () {
-    r = Math.round($('div#gauge').width() / 2);
-    arc = d3.svg.arc().innerRadius(Math.round(r * 0.5)).outerRadius(Math.round(r * 0.95));
-    arc2 = d3.svg.arc().innerRadius(Math.round(r * 0.45)).outerRadius(Math.round(r * 0.52));
-    arc3 = d3.svg.arc().innerRadius(Math.round(r * 0.95)).outerRadius(Math.round(r * 1.00));
+    probe(function (server) {
+        cubeServer = server;
 
-    load();
-    setInterval(load, 600 * 1000);
+        r = Math.round($('div#gauge').width() / 2);
+        arc = d3.svg.arc().innerRadius(Math.round(r * 0.5)).outerRadius(Math.round(r * 0.95));
+        arc2 = d3.svg.arc().innerRadius(Math.round(r * 0.45)).outerRadius(Math.round(r * 0.52));
+        arc3 = d3.svg.arc().innerRadius(Math.round(r * 0.95)).outerRadius(Math.round(r * 1.00));
 
-    donut = d3.layout.pie().sort(null).startAngle(-Math.PI * 0.55).endAngle(Math.PI * 0.55);
+        load();
+        setInterval(load, 600 * 1000);
 
-    svg = d3.select('div#gauge').append('svg:svg')
-    .attr('width', r * 2)
-    .attr('height', r * 1.15)
-    .append('svg:g')
-    .attr('transform', 'translate(' + r + ',' + r + ')');
+        donut = d3.layout.pie().sort(null).startAngle(-Math.PI * 0.55).endAngle(Math.PI * 0.55);
 
-    arcs = svg.selectAll('path.meter')
-    .data(donut([0, p, 1-p]))
-    .enter().append('svg:path').attr('class', 'meter')
-    .attr('fill', function (d, i) { return [ '#eee', '#000', '#eee', ][i]; })
-    .attr('d', arc);
+        svg = d3.select('div#gauge').append('svg:svg')
+        .attr('width', r * 2)
+        .attr('height', r * 1.15)
+        .append('svg:g')
+        .attr('transform', 'translate(' + r + ',' + r + ')');
 
-    label = svg.selectAll('text.centerLabel')
-    .data(['0W'])
-    .enter()
-    .append('svg:text')
-    .attr('class', 'centerLabel')
-    .attr('font-size', Math.round(r * 0.2))
-    .attr('dy', Math.round(r * -0.04))
-    .text(String);
+        arcs = svg.selectAll('path.meter')
+        .data(donut([0, p, 1-p]))
+        .enter().append('svg:path').attr('class', 'meter')
+        .attr('fill', function (d, i) { return [ '#eee', '#000', '#eee', ][i]; })
+        .attr('d', arc);
 
-    percentileLabel = svg.selectAll('text.percentile')
-    .data(['0%'])
-    .enter()
-    .append('svg:text')
-    .attr('class', 'percentile')
-    .attr('font-size', Math.round(r * 0.1))
-    .attr('dy', Math.round(r * 0.1))
-    .text(String);
+        label = svg.selectAll('text.centerLabel')
+        .data(['0W'])
+        .enter()
+        .append('svg:text')
+        .attr('class', 'centerLabel')
+        .attr('font-size', Math.round(r * 0.2))
+        .attr('dy', Math.round(r * -0.04))
+        .text(String);
 
-    maxArc = svg.selectAll('path.max').data(donut([0, 0, 99]))
-    .enter().append('svg:path').attr('class', 'max')
-    .attr('fill', function (d, i) { return ['#ddd', '#333', '#ddd'][i]; })
-    .attr('d', arc2);
+        percentileLabel = svg.selectAll('text.percentile')
+        .data(['0%'])
+        .enter()
+        .append('svg:text')
+        .attr('class', 'percentile')
+        .attr('font-size', Math.round(r * 0.1))
+        .attr('dy', Math.round(r * 0.1))
+        .text(String);
 
-    setInterval(updateInstant, 5000);
+        maxArc = svg.selectAll('path.max').data(donut([0, 0, 99]))
+        .enter().append('svg:path').attr('class', 'max')
+        .attr('fill', function (d, i) { return ['#ddd', '#333', '#ddd'][i]; })
+        .attr('d', arc2);
 
-    updateLines();
-    //setInterval(updateLines, 30000);
+        setInterval(updateInstant, 5000);
+
+        updateLines();
+        setInterval(updateLines, 30000);
+    });
 });
