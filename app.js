@@ -104,19 +104,23 @@ function lines(url, tag) {
     //var h = 120;
     // Scales. Note the inverted domain for the y-scale: bigger is up!
     var x = d3.time.scale().range([0, w]),
-    y = d3.scale.linear().range([h, 0]);
+    y = d3.scale.linear().range([h-13, 0]);
 
     // An area generator, for the light fill.
     var area = d3.svg.area()
     .interpolate("monotone")
     .x(function(d) { return x(d.time); })
-    .y0(h)
+    .y0(h-13)
     .y1(function(d) { return y(d.value); });
 
     var line = d3.svg.line()
     .interpolate("monotone")
     .x(function(d) { return x(d.time); })
     .y(function(d) { return y(d.value); });
+
+    var format = d3.time.format("%H:%M");
+    var xAxis = d3.svg.axis().scale(x).orient("bottom"),
+    yAxis = d3.svg.axis().scale(y).orient("left");
 
     d3.json(url, function (data) {
         var maxVal = 0;
@@ -136,6 +140,10 @@ function lines(url, tag) {
         .append("svg:path")
         .attr("class", "area")
         .attr('d', function (d) { return area(data); });
+
+        svg.append("svg:g")
+        .attr("class", "x axis")
+        .call(xAxis.tickSubdivide(2).tickSize(h-10).tickFormat(format));
 
         svg
         .append("svg:path")
