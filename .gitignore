@@ -1,1 +1,4 @@
 .*.swp
+bundle.js
+public/bundle.min.js
+node_modules

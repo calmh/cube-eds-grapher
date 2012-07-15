@@ -1,3 +1,6 @@
+var domready = require('domready');
+var d3 = require('d3');
+
 var percentiles;
 var donut, arcs, svg, label, percentileLabel, maxArc;
 var p = 0.015;
@@ -115,8 +118,9 @@ function tween(d, i, a) {
 }
 
 function lines(url, tag, float) {
-    var w = $('#' + tag).width();
-    var h = $('#' + tag).height();
+    var container = d3.select('#' + tag);
+    var w = container.style('width').replace('px', '');
+    var h = container.style('height').replace('px', '');
     var rightMargin = 30;
 
     // Scales. Note the inverted domain for the y-scale: bigger is up!
@@ -156,7 +160,7 @@ function lines(url, tag, float) {
 
         d3.select('#' + tag + '-svg').remove();
 
-        var svg = d3.select('#' + tag).append('svg:svg')
+        var svg = container.append('svg:svg')
         .attr('id', tag + '-svg')
         .attr('width', w)
         .attr('height', h);
@@ -190,10 +194,12 @@ function updateLines() {
     lines(cubeServer + '/1.0/metric?expression=median(reading(temperature))&step=' + lineStep + '&limit=' + lineDps, 'temp', true);
 }
 
-$(document).ready(function () {
+domready(function () {
     probe(function (server) {
         cubeServer = server;
-        r = Math.round($('div#gauge').width() / 2);
+        var gauge = d3.select('div#gauge');
+
+        r = Math.round(gauge.style('width').replace('px', '') / 2);
         arc = d3.svg.arc().innerRadius(Math.round(r * 0.5)).outerRadius(Math.round(r * 0.95));
         arc2 = d3.svg.arc().innerRadius(Math.round(r * 0.45)).outerRadius(Math.round(r * 0.52));
         arc3 = d3.svg.arc().innerRadius(Math.round(r * 0.95)).outerRadius(Math.round(r * 1.00));
@@ -203,7 +209,7 @@ $(document).ready(function () {
 
         donut = d3.layout.pie().sort(null).startAngle(-Math.PI * 0.55).endAngle(Math.PI * 0.55);
 
-        svg = d3.select('div#gauge').append('svg:svg')
+        svg = gauge.append('svg:svg')
         .attr('width', r * 2)
         .attr('height', r * 1.15)
         .append('svg:g')
