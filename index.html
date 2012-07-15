@@ -7,18 +7,18 @@
                 font-weight: 300;
             }
             div#gauges {
-                height: 300px;
+                /*height: 300px;*/
             }
             div#gauge {
                 width: 300px;
                 /* height will be 0.575 * width */
-                float: left;
+                /*float: left;*/
             }
             div#power, div#temp {
                 width: 500px;
-                height: 100px;
+                height: 120px;
                 margin: 5px;
-                float: left;
+                /*float: left;*/
             }
             .centerLabel, .percentile {
                 text-anchor: middle;
@@ -42,11 +42,12 @@
                 font-weight: normal;
             }
             line.tick {
-                stroke: #fff;
+                stroke: #ddd;
                 stroke-width: 1.5px;
+                stroke-opacity: 0.4;
             }
             line.tick.minor {
-                stroke-opacity: 0.5;
+                stroke-opacity: 0.2;
             }
             .axis path {
                 display: none;

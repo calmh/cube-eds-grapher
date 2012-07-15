@@ -18,6 +18,10 @@ function probe(cb) {
     });
 }
 
+var instantDps = 6; // Ten seconds each, so 12 is a two minute rolling average
+var lineStep = '6e4'; // ms
+var lineDps = 144; // times lineStep
+
 function load() {
     d3.json(cubeServer + '/1.0/metric?expression=sum(reading(impulses))*3600%2f300&step=3e5&limit=288',
             function(data) {
@@ -36,8 +40,8 @@ function load() {
             });
 }
 
-function instant(callback) {
-    d3.json(cubeServer + '/1.0/metric?expression=sum(reading(impulses))&step=1e4&limit=12',
+function instant(dps, callback) {
+    d3.json(cubeServer + '/1.0/metric?expression=sum(reading(impulses))&step=1e4&limit=' + dps,
             function(data) {
                 var vals = data.map(function (d) { return d.value; });
                 var sum = vals.reduce(function (a, b) { return a + b; }, 0);
@@ -57,8 +61,8 @@ function instant(callback) {
             });
 }
 
-function updateInstant() {
-    instant(function (val, pct) {
+function updateInstant(dps) {
+    instant(dps, function (val, pct) {
         if (!percentiles) {
             return;
         }
@@ -110,73 +114,85 @@ function tween(d, i, a) {
     };
 }
 
-function lines(url, tag) {
+function lines(url, tag, float) {
     var w = $('#' + tag).width();
     var h = $('#' + tag).height();
-    //var w = 640;
-    //var h = 120;
+    var rightMargin = 30;
+
     // Scales. Note the inverted domain for the y-scale: bigger is up!
-    var x = d3.time.scale().range([0, w]),
-    y = d3.scale.linear().range([h-13, 0]);
+    var x = d3.time.scale().range([0, w - rightMargin]),
+    y = d3.scale.linear().range([h-13, 10]);
 
     // An area generator, for the light fill.
     var area = d3.svg.area()
-    .interpolate("monotone")
+    .interpolate('monotone')
     .x(function(d) { return x(d.time); })
     .y0(h-13)
     .y1(function(d) { return y(d.value); });
 
     var line = d3.svg.line()
-    .interpolate("monotone")
+    .interpolate('monotone')
     .x(function(d) { return x(d.time); })
     .y(function(d) { return y(d.value); });
 
-    var format = d3.time.format("%H:%M");
-    var xAxis = d3.svg.axis().scale(x).orient("bottom"),
-    yAxis = d3.svg.axis().scale(y).orient("left");
+    var format = d3.time.format('%H:%M');
+    var xAxis = d3.svg.axis().scale(x).orient('bottom');
+    var yAxis = d3.svg.axis().scale(y).orient('right').tickFormat(d3.format('.3s'));
 
     d3.json(url, function (data) {
-        var maxVal = 0;
+        var maxVal = data[0].value, minVal = data[0].value;
         for (var i = 0; i < data.length; i++) {
             data[i].value = data[i].value || 0;
             data[i].time = new Date(data[i].time).getTime();
             maxVal = Math.max(maxVal, data[i].value);
+            minVal = Math.min(minVal, data[i].value);
         }
         x.domain([data[0].time, data[data.length - 1].time]);
-        y.domain([0, maxVal]).nice();
+        if (float) {
+            y.domain([minVal, maxVal]).nice();
+        } else {
+            y.domain([0, maxVal]).nice();
+        }
 
         d3.select('#' + tag + '-svg').remove();
 
-        var svg = d3.select('#' + tag).append("svg:svg")
+        var svg = d3.select('#' + tag).append('svg:svg')
         .attr('id', tag + '-svg')
         .attr('width', w)
         .attr('height', h);
 
-        svg
-        .append("svg:path")
-        .attr("class", "area")
-        .attr('d', function (d) { return area(data); });
+        if (!float) {
+            svg
+            .append('svg:path')
+            .attr('class', 'area')
+            .attr('d', function (d) { return area(data); });
+        }
 
-        svg.append("svg:g")
-        .attr("class", "x axis")
-        .call(xAxis.tickSubdivide(2).tickSize(h-10).tickFormat(format));
+        svg.append('svg:g')
+        .attr('class', 'x axis')
+        .attr('transform', 'translate(0, 10)')
+        .call(xAxis.tickSubdivide(2).tickSize(h-20).tickFormat(format));
+
+        svg.append('svg:g')
+        .attr('class', 'y axis')
+        //.attr('transform', 'translate(' + w + ', 0)')
+        .call(yAxis.tickSubdivide(0).tickSize(w - rightMargin));
 
         svg
-        .append("svg:path")
-        .attr("class", "line")
+        .append('svg:path')
+        .attr('class', 'line')
         .attr('d', function (d) { return line(data); });
     });
 }
 
 function updateLines() {
-    lines(cubeServer + '/1.0/metric?expression=sum(reading(impulses))*3600%2f300&step=6e4&limit=288', 'power');
-    lines(cubeServer + '/1.0/metric?expression=median(reading(temperature))&step=6e4&limit=288', 'temp');
+    lines(cubeServer + '/1.0/metric?expression=sum(reading(impulses))*3600000%2f' + lineStep + '&step=' + lineStep + '&limit=' + lineDps, 'power');
+    lines(cubeServer + '/1.0/metric?expression=median(reading(temperature))&step=' + lineStep + '&limit=' + lineDps, 'temp', true);
 }
 
 $(document).ready(function () {
     probe(function (server) {
         cubeServer = server;
-
         r = Math.round($('div#gauge').width() / 2);
         arc = d3.svg.arc().innerRadius(Math.round(r * 0.5)).outerRadius(Math.round(r * 0.95));
         arc2 = d3.svg.arc().innerRadius(Math.round(r * 0.45)).outerRadius(Math.round(r * 0.52));
@@ -222,7 +238,9 @@ $(document).ready(function () {
         .attr('fill', function (d, i) { return ['#ddd', '#333', '#ddd'][i]; })
         .attr('d', arc2);
 
-        setInterval(updateInstant, 5000);
+        setInterval(function () {
+            updateInstant(instantDps);
+        }, 5000);
 
         updateLines();
         setInterval(updateLines, 30000);
