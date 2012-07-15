@@ -10,8 +10,6 @@ var cubeServer;
 var candidates =  [ 'http://zenv.nym.se:1081', 'http://ext.nym.se:1081' ];
 
 var instantDps = 6; // Ten seconds each, so 12 is a two minute rolling average
-var lineStep = '6e4'; // ms
-var lineDps = 144; // times lineStep
 
 function probe(cb) {
     var found = false;
@@ -117,11 +115,11 @@ function tween(d, i, a) {
     };
 }
 
-function lines(url, tag, float) {
-    var container = d3.select('#' + tag);
+function lines(opts) {
+    var container = d3.select('#' + opts.tag);
     var w = container.style('width').replace('px', '');
     var h = container.style('height').replace('px', '');
-    var rightMargin = 30;
+    var rightMargin = 40;
 
     // Scales. Note the inverted domain for the y-scale: bigger is up!
     var x = d3.time.scale().range([0, w - rightMargin]),
@@ -139,11 +137,12 @@ function lines(url, tag, float) {
     .x(function(d) { return x(d.time); })
     .y(function(d) { return y(d.value); });
 
-    var format = d3.time.format('%H:%M');
-    var xAxis = d3.svg.axis().scale(x).orient('bottom');
-    var yAxis = d3.svg.axis().scale(y).orient('right').tickFormat(d3.format('.3s'));
+    var xFormat = d3.time.format('%H:%M');
+    var yFormat = d3.format('.3s');
+    var xAxis = d3.svg.axis().scale(x).orient('bottom').tickFormat(xFormat);
+    var yAxis = d3.svg.axis().scale(y).orient('right').tickFormat(yFormat);
 
-    d3.json(url, function (data) {
+    d3.json(opts.url, function (data) {
         var maxVal = data[0].value, minVal = data[0].value;
         for (var i = 0; i < data.length; i++) {
             data[i].value = data[i].value || 0;
@@ -152,20 +151,20 @@ function lines(url, tag, float) {
             minVal = Math.min(minVal, data[i].value);
         }
         x.domain([data[0].time, data[data.length - 1].time]);
-        if (float) {
+        if (opts.float) {
             y.domain([minVal, maxVal]).nice();
         } else {
             y.domain([0, maxVal]).nice();
         }
 
-        d3.select('#' + tag + '-svg').remove();
+        d3.select('#' + opts.tag + '-svg').remove();
 
         var svg = container.append('svg:svg')
-        .attr('id', tag + '-svg')
+        .attr('id', opts.tag + '-svg')
         .attr('width', w)
         .attr('height', h);
 
-        if (!float) {
+        if (!opts.float) {
             svg
             .append('svg:path')
             .attr('class', 'area')
@@ -175,7 +174,7 @@ function lines(url, tag, float) {
         svg.append('svg:g')
         .attr('class', 'x axis')
         .attr('transform', 'translate(0, 10)')
-        .call(xAxis.tickSubdivide(2).tickSize(h-20).tickFormat(format));
+        .call(xAxis.tickSubdivide(2).tickSize(h-20));
 
         svg.append('svg:g')
         .attr('class', 'y axis')
@@ -190,8 +189,31 @@ function lines(url, tag, float) {
 }
 
 function updateLines() {
-    lines(cubeServer + '/1.0/metric?expression=sum(reading(impulses))*3600000%2f' + lineStep + '&step=' + lineStep + '&limit=' + lineDps, 'power');
-    lines(cubeServer + '/1.0/metric?expression=median(reading(temperature))&step=' + lineStep + '&limit=' + lineDps, 'temp', true);
+    lines({
+        url: cubeServer + '/1.0/metric?expression=sum(reading(impulses))*3600000%2f6e4&step=6e4&limit=144',
+        tag: 'power',
+        unit: 'W'
+    });
+
+    lines({
+        url: cubeServer + '/1.0/metric?expression=median(reading(temperature))&step=6e4&limit=144',
+        tag: 'temp',
+        float: true,
+        unit: 'C'
+    });
+
+    lines({
+        url: cubeServer + '/1.0/metric?expression=sum(reading(impulses))*3600000%2f3e5&step=3e5&limit=288',
+        tag: 'lpower',
+        unit: 'W'
+    });
+
+    lines({
+        url: cubeServer + '/1.0/metric?expression=median(reading(temperature))&step=3e5&limit=288',
+        tag: 'ltemp',
+        float: true,
+        unit: 'C'
+    });
 }
 
 domready(function () {
