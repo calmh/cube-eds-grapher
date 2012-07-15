@@ -9,6 +9,10 @@ var pointerColor = d3.scale.linear().range(['green', 'green', 'red']);
 var cubeServer;
 var candidates =  [ 'http://zenv.nym.se:1081', 'http://ext.nym.se:1081' ];
 
+var instantDps = 6; // Ten seconds each, so 12 is a two minute rolling average
+var lineStep = '6e4'; // ms
+var lineDps = 144; // times lineStep
+
 function probe(cb) {
     var found = false;
     candidates.forEach(function (cand) {
@@ -20,10 +24,6 @@ function probe(cb) {
         });
     });
 }
-
-var instantDps = 6; // Ten seconds each, so 12 is a two minute rolling average
-var lineStep = '6e4'; // ms
-var lineDps = 144; // times lineStep
 
 function load() {
     d3.json(cubeServer + '/1.0/metric?expression=sum(reading(impulses))*3600%2f300&step=3e5&limit=288',
