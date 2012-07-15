@@ -1,5 +1,6 @@
 var domready = require('domready');
 var d3 = require('d3');
+var average = require('filters').average;
 
 var percentiles;
 var donut, arcs, svg, label, percentileLabel, maxArc;
@@ -143,9 +144,14 @@ function lines(opts) {
     var yAxis = d3.svg.axis().scale(y).orient('right').tickFormat(yFormat);
 
     d3.json(opts.url, function (data) {
-        var maxVal = data[0].value, minVal = data[0].value;
+        var rawData = [];
         for (var i = 0; i < data.length; i++) {
-            data[i].value = data[i].value || 0;
+            rawData.push(data[i].value || 0);
+        }
+        rawData = average(rawData, 5, 0.2);
+        var maxVal = rawData[0], minVal = rawData[0];
+        for (var i = 0; i < data.length; i++) {
+            data[i].value = rawData[i];
             data[i].time = new Date(data[i].time).getTime();
             maxVal = Math.max(maxVal, data[i].value);
             minVal = Math.min(minVal, data[i].value);
