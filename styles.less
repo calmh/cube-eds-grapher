@@ -1,0 +1,50 @@
+body {
+    font-family: Helvetica, Verdana, sans-serif;
+    font-weight: 300;
+}
+div#gauges {
+    /*height: 300px;*/
+}
+div#gauge {
+    width: 300px;
+    /* height will be 0.575 * width */
+    /*float: left;*/
+}
+div#power, div#temp {
+    width: 500px;
+    height: 120px;
+    margin: 5px;
+    /*float: left;*/
+}
+.centerLabel, .percentile {
+    text-anchor: middle;
+}
+.centerLabel{
+    fill: #888;
+}
+.percentile {
+    fill: #bbb;
+}
+path.area {
+    fill: #eee;
+}
+path.line {
+    stroke: #666;
+    fill: none;
+    stroke-width: 1.5px;
+}
+.axis text {
+    font-size: 10px;
+    font-weight: normal;
+}
+line.tick {
+    stroke: #ddd;
+    stroke-width: 1.5px;
+    stroke-opacity: 0.4;
+}
+line.tick.minor {
+    stroke-opacity: 0.2;
+}
+.axis path {
+    display: none;
+}

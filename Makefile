@@ -5,7 +5,7 @@ BROWSERIFY =  ./node_modules/.bin/browserify
 UGLIFY_FLAGS =
 LESSC_FLAGS = --yui-compress
 
-FILES = public/bundle.min.js
+FILES = public/bundle.min.js public/styles.min.css
 
 all: ${FILES}
 
@@ -21,3 +21,9 @@ bundle.js: app.js
 
 public/bundle.min.js: bundle.js
 	${UGLIFY} ${UGLIFY_FLAGS} $^ > $@
+
+styles.css: styles.less
+	${LESSC} $^ > $@
+
+public/styles.min.css: styles.css
+	${LESSC} ${LESSC_FLAGS} $^ > $@
