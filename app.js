@@ -10,7 +10,7 @@ var pointerColor = d3.scale.linear().range(['green', 'green', 'red']);
 var cubeServer;
 var candidates =  [ 'http://zenv.nym.se:1081', 'http://ext.nym.se:1081' ];
 
-var instantDps = 6; // Ten seconds each, so 12 is a two minute rolling average
+var instantDps = 18; // Ten seconds each, so 12 is a two minute rolling average
 
 function probe(cb) {
     var found = false;
@@ -46,8 +46,9 @@ function instant(dps, callback) {
     d3.json(cubeServer + '/1.0/metric?expression=sum(reading(impulses))&step=1e4&limit=' + dps,
             function(data) {
                 var vals = data.map(function (d) { return d.value; });
-                var sum = vals.reduce(function (a, b) { return a + b; }, 0);
-                sum = sum * 3600 / (vals.length * 10);
+                var avg = average(vals, dps, 0.25);
+                var sum = avg.pop();
+                sum = sum * 3600 / 10;
                 var pct = '>100';
 
                 if (percentiles) {
