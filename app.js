@@ -209,7 +209,7 @@ function updateLines() {
         url: cubeServer + '/1.0/metric?expression=median(reading(temperature))&step=6e4&limit=200',
         tag: 'temp',
         float: true,
-        transform: function (data) { return average(data, 10, 0.1); }
+        transform: function (data) { return average(data, 3, 0.1); }
     });
 
     lines({
