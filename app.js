@@ -72,7 +72,7 @@ function updateInstant(dps) {
         }
 
         label = label.data([val]).text(function (v) { return Math.round(v) + 'W'; });
-        percentileLabel = percentileLabel.data([pct]).text(function (v) { return v + '%'; });
+        // percentileLabel = percentileLabel.data([pct]).text(function (v) { return v + '%'; });
 
         // Instant
 
@@ -334,9 +334,10 @@ domready(function () {
         .append('svg:text')
         .attr('class', 'centerLabel')
         .attr('font-size', Math.round(r * 0.2))
-        .attr('dy', Math.round(r * -0.04))
+        //.attr('dy', Math.round(r * -0.04))
         .text(String);
 
+        /*
         percentileLabel = svg.selectAll('text.percentile')
         .data(['0%'])
         .enter()
@@ -345,6 +346,7 @@ domready(function () {
         .attr('font-size', Math.round(r * 0.1))
         .attr('dy', Math.round(r * 0.1))
         .text(String);
+        */
 
         maxArc = svg.selectAll('path.max').data(donut([0, 0, 99]))
         .enter().append('svg:path').attr('class', 'max')
