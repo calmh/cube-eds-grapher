@@ -235,10 +235,11 @@ function weekbar()
     var container = d3.select('div#week');
     var w = container.style('width').replace('px', '');
     var h = container.style('height').replace('px', '');
-    var p = [5, 5, 20, 5];
+    var p = [20, 5, 20, 5];
     var x = d3.scale.ordinal().rangeRoundBands([0, w - p[1] - p[3]], 0.15);
     var y = d3.scale.linear().range([0, h - p[0] - p[2]]);
     var format = d3.time.format("%d/%m");
+    var yFormat = d3.format('.3s');
 
     var svg = container.append("svg:svg")
     .attr("width", w)
@@ -270,7 +271,7 @@ function weekbar()
                 .enter().append("svg:g")
                 .attr("class", "bars");
 
-                var rect = cause.selectAll("rect")
+                cause.selectAll("rect")
                 .data(Object)
                 .enter().append("svg:rect")
                 .attr("x", function(d) { return x(d.time); })
@@ -278,13 +279,23 @@ function weekbar()
                 .attr("height", function(d) { return y(d.value); })
                 .attr("width", x.rangeBand());
 
-                var label = svg.selectAll("text")
+                svg.selectAll("text.bar-amount")
+                .data(data)
+                .enter().append("svg:text")
+                .attr("class", "bar-amount")
+                .attr("x", function (d) { return x(d.time) + x.rangeBand() / 2; })
+                .attr("y", function (d) { return  -y(d.value); })
+                .attr("text-anchor", "middle")
+                .attr("dy", "-.4em")
+                .text(function (d) { return yFormat(d.value); });
+
+                svg.selectAll("text.bar-label")
                 .data(times)
                 .enter().append("svg:text")
+                .attr("class", "bar-label")
                 .attr("x", function(d) { return x(d) + x.rangeBand() / 2; })
                 .attr("y", 6)
                 .attr("text-anchor", "middle")
-                .attr("class", "bar-label")
                 .attr("dy", ".71em")
                 .text(function (t) { return format(new Date(t)); });
             });
