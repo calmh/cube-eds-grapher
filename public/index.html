@@ -1,18 +1,42 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title></title>
+        <title>Power Consumption</title>
         <link rel="stylesheet" href="styles.min.css" />
         <script type="text/javascript" src="bundle.min.js"></script>
     </head>
     <body>
         <div id="gauges">
-            <div id="gauge"></div>
-            <div id="lpower" class='lineGraph'></div>
-            <div id="power" class='lineGraph'></div>
-            <div id="ltemp" class='lineGraph'></div>
-            <div id="temp" class='lineGraph'></div>
-            <div id="week" class='barGraph'></div>
+            <div class='group'>
+                <h2>Power Use (instantaneous)</h2>
+                <div id="gauge"></div>
+            </div>
+            <div class='group'>
+                <h2>Power Consumption (two weeks)</h2>
+                <div id="week" class='barGraph'></div>
+            </div>
+
+            <div class='clear' />
+
+            <div class='group'>
+                <h2>Power Consumption (3 hours)</h2>
+                <div id="power" class='lineGraph'></div>
+            </div>
+            <div class='group'>
+                <h2>Power Consumption (24 hours)</h2>
+                <div id="lpower" class='lineGraph'></div>
+            </div>
+
+            <div class='clear' />
+
+            <div class='group'>
+                <h2>Outside Temperature (3 hours)</h2>
+                <div id="temp" class='lineGraph'></div>
+            </div>
+            <div class='group'>
+                <h2>Outside Temperature (24 hours)</h2>
+                <div id="ltemp" class='lineGraph'></div>
+            </div>
         </div>
     </body>
 </html>

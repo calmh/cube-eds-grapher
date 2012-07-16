@@ -47,7 +47,7 @@ function instant(dps, callback) {
     d3.json(cubeServer + '/1.0/metric?expression=sum(reading(impulses))&step=1e4&limit=' + dps,
             function(data) {
                 var vals = data.map(function (d) { return d.value; });
-                var avg = average(vals, dps, 0.25);
+                var avg = average(vals, dps, 0.75);
                 var sum = avg.pop();
                 sum = sum * 3600 / 10;
                 var pct = '>100';
@@ -184,12 +184,12 @@ function lines(opts) {
         svg.append('svg:g')
         .attr('class', 'x axis')
         .attr('transform', 'translate(0, 10)')
-        .call(xAxis.tickSubdivide(2).tickSize(h-20));
+        .call(xAxis.ticks(6).tickSubdivide(2).tickSize(h-20));
 
         svg.append('svg:g')
         .attr('class', 'y axis')
         //.attr('transform', 'translate(' + w + ', 0)')
-        .call(yAxis.tickSubdivide(0).tickSize(w - rightMargin));
+        .call(yAxis.ticks(6).tickSubdivide(0).tickSize(w - rightMargin));
 
         svg
         .append('svg:path')
@@ -200,14 +200,14 @@ function lines(opts) {
 
 function updateLines() {
     lines({
-        url: cubeServer + '/1.0/metric?expression=sum(reading(impulses))*3600000%2f6e4&step=6e4&limit=144',
+        url: cubeServer + '/1.0/metric?expression=sum(reading(impulses))*3600000%2f6e4&step=6e4&limit=200',
         tag: 'power',
         unit: 'W',
         transform: function (data) { return average(data, 3, 0.2); }
     });
 
     lines({
-        url: cubeServer + '/1.0/metric?expression=median(reading(temperature))&step=6e4&limit=144',
+        url: cubeServer + '/1.0/metric?expression=median(reading(temperature))&step=6e4&limit=200',
         tag: 'temp',
         float: true,
         unit: 'C',
@@ -215,14 +215,14 @@ function updateLines() {
     });
 
     lines({
-        url: cubeServer + '/1.0/metric?expression=sum(reading(impulses))*3600000%2f3e5&step=3e5&limit=288',
+        url: cubeServer + '/1.0/metric?expression=sum(reading(impulses))*3600000%2f3e5&step=3e5&limit=300',
         tag: 'lpower',
         unit: 'W',
         transform: function (data) { return median(data); }
     });
 
     lines({
-        url: cubeServer + '/1.0/metric?expression=median(reading(temperature))&step=3e5&limit=288',
+        url: cubeServer + '/1.0/metric?expression=median(reading(temperature))&step=3e5&limit=300',
         tag: 'ltemp',
         float: true,
         unit: 'C',
@@ -281,9 +281,7 @@ function weekbar()
                 var cause = svg.selectAll("g.cause")
                 .data([data])
                 .enter().append("svg:g")
-                .attr("class", "cause")
-                .style("fill", '#eee')
-                .style("stroke", '#666');
+                .attr("class", "bars");
 
                 // Add a rect for each date.
                 var rect = cause.selectAll("rect")
