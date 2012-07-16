@@ -202,7 +202,6 @@ function updateLines() {
     lines({
         url: cubeServer + '/1.0/metric?expression=sum(reading(impulses))*3600000%2f6e4&step=6e4&limit=200',
         tag: 'power',
-        unit: 'W',
         transform: function (data) { return average(data, 3, 0.2); }
     });
 
@@ -210,14 +209,12 @@ function updateLines() {
         url: cubeServer + '/1.0/metric?expression=median(reading(temperature))&step=6e4&limit=200',
         tag: 'temp',
         float: true,
-        unit: 'C',
         transform: function (data) { return average(data, 10, 0.1); }
     });
 
     lines({
         url: cubeServer + '/1.0/metric?expression=sum(reading(impulses))*3600000%2f3e5&step=3e5&limit=300',
         tag: 'lpower',
-        unit: 'W',
         transform: function (data) { return median(data); }
     });
 
@@ -225,7 +222,6 @@ function updateLines() {
         url: cubeServer + '/1.0/metric?expression=median(reading(temperature))&step=3e5&limit=300',
         tag: 'ltemp',
         float: true,
-        unit: 'C',
         transform: function (data) { return median(data); }
     });
 }
