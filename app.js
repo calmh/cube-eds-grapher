@@ -47,7 +47,7 @@ function instant(dps, callback) {
     d3.json(cubeServer + '/1.0/metric?expression=sum(reading(impulses))&step=1e4&limit=' + dps,
             function(data) {
                 var vals = data.map(function (d) { return d.value; });
-                var avg = average(vals, dps, 0.75);
+                var avg = average(vals, dps, 1);
                 var sum = avg.pop();
                 sum = sum * 3600 / 10;
                 var pct = '>100';
@@ -234,7 +234,7 @@ function weekbar()
     var p = [20, 5, 20, 5];
     var x = d3.scale.ordinal().rangeRoundBands([0, w - p[1] - p[3]], 0.15);
     var y = d3.scale.linear().range([0, h - p[0] - p[2]]);
-    var format = d3.time.format("%d/%m");
+    var format = function (d) { var d = new Date(d.time); return d.getDate() + '/' + (d.getMonth() + 1); };
     var yFormat = d3.format('.3s');
 
     var svg = container.append("svg:svg")
@@ -286,14 +286,14 @@ function weekbar()
                 .text(function (d) { return yFormat(d.value); });
 
                 svg.selectAll("text.bar-label")
-                .data(times)
+                .data(data)
                 .enter().append("svg:text")
                 .attr("class", "bar-label")
-                .attr("x", function(d) { return x(d) + x.rangeBand() / 2; })
+                .attr("x", function(d) { return x(d.time) + x.rangeBand() / 2; })
                 .attr("y", 6)
                 .attr("text-anchor", "middle")
                 .attr("dy", ".71em")
-                .text(function (t) { return format(new Date(t)); });
+                .text(format);
             });
 }
 
