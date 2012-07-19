@@ -1,13 +1,15 @@
-@groupBackground: #bbb;
-@light: #eee;
+@groupTitleBackground: #bbb;
+@groupBackground: #f8f8f8;
+
+@light: #e0e0e0;
 @dark: #888;
+@pointer: #333;
 
 body {
     font-family: Helvetica, Verdana, sans-serif;
     font-weight: 300;
 }
-div#gauges {
-}
+
 div#gauge {
     width: 300px;
     // height will be 0.575 * width
@@ -16,65 +18,63 @@ div#week {
     width: 520px;
     height: 176px;
 }
-div#temp, div#power {
-    width: 400px;
-    height: 120px;
-    margin: 5px;
-}
-div#ltemp, div#lpower {
+div#temp, div#power, div#ltemp, div#lpower {
     width: 400px;
     height: 120px;
     margin: 5px;
 }
 
+.instant {
+    &.segment-0, &.segment-2 { fill: lighten(@light, 5%); }
+}
+.median {
+    &.segment-0, &.segment-2 { fill: @light; }
+}
+.segment-1 { fill: @pointer; }
+
 div.group {
-    border: 1px solid @groupBackground;
     float: left;
     margin: 5px;
+    padding: 5px;
 
     h2 {
         color: #fff;
         font-size: 18px;
-        background-color: @groupBackground;
+        background-color: @groupTitleBackground;
         margin: 0;
         padding: 3px;
         font-weight: normal;
     }
 }
-.centerLabel, .percentile {
-    text-anchor: middle;
-}
-.centerLabel{
-    fill: #888;
-}
-.percentile {
-    fill: #bbb;
-}
 path.area {
-    fill: #eee;
+    fill: @light;
 }
 path.line {
-    stroke: #666;
+    stroke: @pointer;
     fill: none;
     stroke-width: 1.5px;
 }
-.axis text, text.bar-label {
-    font-size: 10px;
-    font-weight: normal;
-}
-text.bar-amount {
+
+text {
     font-size: 10px;
     font-weight: normal;
     fill: @dark;
+
+    &.centerLabel{
+        font-weight: 300;
+        text-anchor: middle;
+        font-size: 30px;
+    }
 }
 
 line.tick {
-    stroke: #ddd;
+    stroke: lighten(@light, 5%);
     stroke-width: 1.5px;
     stroke-opacity: 0.5;
-}
-line.tick.minor {
-    stroke-opacity: 0.2;
+
+    &.minor {
+        stroke-opacity: 0.2;
+    }
 }
 .axis path {
     display: none;

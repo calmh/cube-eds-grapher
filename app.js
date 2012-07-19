@@ -87,7 +87,6 @@ function updateInstant(dps) {
         .ease('bounce')
         .duration(500)
         .attrTween('d', tween)
-        .attr('fill', function (d, i) { return ['#eee', pointerColor(val), '#eee'][i]; });
 
         // 50th and 95th percentile
 
@@ -318,10 +317,10 @@ domready(function () {
         .append('svg:g')
         .attr('transform', 'translate(' + r + ',' + r + ')');
 
-        arcs = svg.selectAll('path.meter')
+        arcs = svg.selectAll('path.instant')
         .data(donut([0, p, 1-p]))
-        .enter().append('svg:path').attr('class', 'meter')
-        .attr('fill', function (d, i) { return [ '#eee', '#000', '#eee', ][i]; })
+        .enter().append('svg:path')
+        .attr('class', function (d, i) { return 'instant segment-' + i; })
         .attr('d', arc);
 
         label = svg.selectAll('text.centerLabel')
@@ -329,24 +328,11 @@ domready(function () {
         .enter()
         .append('svg:text')
         .attr('class', 'centerLabel')
-        .attr('font-size', Math.round(r * 0.2))
-        //.attr('dy', Math.round(r * -0.04))
         .text(String);
 
-        /*
-        percentileLabel = svg.selectAll('text.percentile')
-        .data(['0%'])
-        .enter()
-        .append('svg:text')
-        .attr('class', 'percentile')
-        .attr('font-size', Math.round(r * 0.1))
-        .attr('dy', Math.round(r * 0.1))
-        .text(String);
-        */
-
-        maxArc = svg.selectAll('path.max').data(donut([0, 0, 99]))
-        .enter().append('svg:path').attr('class', 'max')
-        .attr('fill', function (d, i) { return ['#ddd', '#333', '#ddd'][i]; })
+        maxArc = svg.selectAll('path.median').data(donut([0, 0, 99]))
+        .enter().append('svg:path')
+        .attr('class', function (d, i) { return 'median segment-' + i; })
         .attr('d', arc2);
 
         setInterval(function () {
