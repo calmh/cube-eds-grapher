@@ -9,7 +9,7 @@ var p = 0.015;
 var r, arc, arc2, arc3;
 var pointerColor = d3.scale.linear().range(['green', 'green', 'red']);
 var cubeServer;
-var candidates =  [ 'http://zenv.nym.se:1081', 'http://ext.nym.se:1081' ];
+var candidates =  [ 'http://zcube.nym.se:1081', 'http://ext.nym.se:1081' ];
 
 var instantDps = 18; // Ten seconds each, so 12 is a two minute rolling average
 
