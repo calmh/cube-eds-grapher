@@ -101,9 +101,9 @@ function updateInstant(dps) {
 }
 
 var prevVals = {
-    0:{startAngle: -0.5 * Math.PI, endAngle: -0.5 * Math.PI},
-    1:{startAngle: -0.5 * Math.PI, endAngle: (p - 0.5) * Math.PI},
-    2:{startAngle: (p - 0.5) * Math.PI, endAngle: 0.5 * Math.PI},
+    0:{startAngle: -0.55 * Math.PI, endAngle: -0.55 * Math.PI},
+    1:{startAngle: -0.55 * Math.PI, endAngle: (p - 0.55) * Math.PI},
+    2:{startAngle: (p - 0.55) * Math.PI, endAngle: 0.55 * Math.PI},
 };
 
 function tween(d, i, a) {
