@@ -1,7 +1,7 @@
 @groupTitleBackground: #bbb;
 @groupBackground: #f8f8f8;
 
-@light: #e0e0e0;
+@light: #eee;
 @dark: #888;
 @pointer: #333;
 
@@ -25,10 +25,10 @@ div#temp, div#power, div#ltemp, div#lpower {
 }
 
 .instant {
-    &.segment-0, &.segment-2 { fill: lighten(@light, 5%); }
+    &.segment-0, &.segment-2 { fill: lighten(@light, 2%); }
 }
 .median {
-    &.segment-0, &.segment-2 { fill: @light; }
+    &.segment-0, &.segment-2 { fill: darken(@light, 2%); }
 }
 .segment-1 { fill: @pointer; }
 
@@ -68,7 +68,7 @@ text {
 }
 
 line.tick {
-    stroke: lighten(@light, 5%);
+    stroke: darken(@light, 5%);
     stroke-width: 1.5px;
     stroke-opacity: 0.5;
 
