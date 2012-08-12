@@ -199,29 +199,29 @@ function lines(opts) {
 
 function updateLines() {
     lines({
-        url: cubeServer + '/1.0/metric?expression=sum(reading(impulses))*3600000%2f6e4&step=6e4&limit=200',
+        url: cubeServer + '/1.0/metric?expression=sum(reading(impulses))*3600000%2f6e4&step=6e4&limit=180',
         tag: 'power',
-        transform: function (data) { return average(data, 3, 0.2); }
+        transform: function (data) { return median(data); }
     });
 
     lines({
-        url: cubeServer + '/1.0/metric?expression=median(reading(temperature))&step=6e4&limit=200',
+        url: cubeServer + '/1.0/metric?expression=median(reading(temperature))&step=6e4&limit=180',
         tag: 'temp',
         float: true,
-        transform: function (data) { return average(data, 3, 0.1); }
+        transform: function (data) { return average(data, 3); }
     });
 
     lines({
-        url: cubeServer + '/1.0/metric?expression=sum(reading(impulses))*3600000%2f3e5&step=3e5&limit=300',
+        url: cubeServer + '/1.0/metric?expression=sum(reading(impulses))*3600000%2f3e5&step=3e5&limit=432',
         tag: 'lpower',
         transform: function (data) { return median(data); }
     });
 
     lines({
-        url: cubeServer + '/1.0/metric?expression=median(reading(temperature))&step=3e5&limit=300',
+        url: cubeServer + '/1.0/metric?expression=median(reading(temperature))&step=3e5&limit=432',
         tag: 'ltemp',
         float: true,
-        transform: function (data) { return median(data); }
+        transform: function (data) { return average(data, 3); }
     });
 }
 
