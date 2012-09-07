@@ -11,7 +11,8 @@ var pointerColor = d3.scale.linear().range(['green', 'green', 'red']);
 var cubeServer;
 var candidates =  [ 'http://zcube.nym.se:1081', 'http://ext.nym.se:1081' ];
 
-var instantDps = 18; // Ten seconds each, so 12 is a two minute rolling average
+var instantDps = 12; // Ten seconds each, so 12 is a two minute rolling average
+var instantThres = 1.0;
 
 function probe(cb) {
     var found = false;
@@ -39,7 +40,7 @@ function load() {
                     all: vals,
                 };
 
-                updateInstant();
+                updateInstant(instantDps);
             });
 }
 
@@ -47,7 +48,7 @@ function instant(dps, callback) {
     d3.json(cubeServer + '/1.0/metric?expression=sum(reading(impulses))&step=1e4&limit=' + dps,
             function(data) {
                 var vals = data.map(function (d) { return d.value; });
-                var avg = average(vals, dps, 1);
+                var avg = average(vals, dps, instantThres);
                 var sum = avg.pop();
                 sum = sum * 3600 / 10;
                 var pct = '>100';
@@ -72,7 +73,6 @@ function updateInstant(dps) {
         }
 
         label = label.data([val]).text(function (v) { return Math.round(v) + 'W'; });
-        // percentileLabel = percentileLabel.data([pct]).text(function (v) { return v + '%'; });
 
         // Instant
 
@@ -296,6 +296,98 @@ function weekbar()
             });
 }
 
+function mmarea(opts) {
+    var url = cubeServer + '/1.0/metric?expression={expr}(reading(temperature))&step=864e5&limit=60';
+    var container = d3.select('#' + opts.tag);
+    var w = container.style('width').replace('px', '');
+    var h = container.style('height').replace('px', '');
+    var rightMargin = 40;
+
+    // Scales. Note the inverted domain for the y-scale: bigger is up!
+    var x = d3.time.scale().range([0, w - rightMargin]),
+    y = d3.scale.linear().range([h-13, 10]);
+
+    var area = d3.svg.area()
+    .interpolate('monotone')
+    .x(function(d) { return x(d.time); })
+    .y0(function(d) { return y(d.min); })
+    .y1(function(d) { return y(d.max); });
+
+    var line1 = d3.svg.line()
+    .interpolate('monotone')
+    .x(function(d) { return x(d.time); })
+    .y(function(d) { return y(d.min); });
+
+    var line2 = d3.svg.line()
+    .interpolate('monotone')
+    .x(function(d) { return x(d.time); })
+    .y(function(d) { return y(d.max); });
+
+    //var xFormat = d3.time.format('%H:%M');
+    var xFormat = function (d) { var d = new Date(d); return d.getDate() + '/' + (d.getMonth() + 1); };
+    var yFormat = d3.format('.3s');
+    var xAxis = d3.svg.axis().scale(x).orient('bottom').tickFormat(xFormat);
+    var yAxis = d3.svg.axis().scale(y).orient('right').tickFormat(yFormat);
+
+    var data = [];
+    var waiting = 2;
+
+    ['max', 'min'].forEach(function (expr) {
+        var realurl = url.replace('{expr}', expr);
+        d3.json(realurl, function (md) {
+            for (var i = 0; i < md.length; i++) {
+                data[i] = data[i] || { time: md[i].time, max: null, min: null };
+                data[i][expr] = md[i].value;
+            }
+
+            if (--waiting === 0) {
+                done();
+            }
+        });
+    });
+
+    function done() {
+        data = data.filter(function (i) { return i.min !== null && i.max !== null; });
+        var maxVal = data[0].max, minVal = data[0].min;
+        for (var i = 0; i < data.length; i++) {
+            data[i].time = new Date(data[i].time).getTime();
+            maxVal = Math.max(maxVal, data[i].max);
+            minVal = Math.min(minVal, data[i].min);
+        }
+
+        x.domain([data[0].time, data[data.length - 1].time]);
+        y.domain([0, maxVal]).nice();
+
+        d3.select('#' + opts.tag + '-svg').remove();
+
+        var svg = container.append('svg:svg')
+        .attr('id', opts.tag + '-svg')
+        .attr('width', w)
+        .attr('height', h);
+
+        svg.append('svg:path')
+        .attr('class', 'area')
+        .attr('d', function (d) { return area(data); });
+
+        svg.append('svg:g')
+        .attr('class', 'x axis')
+        .attr('transform', 'translate(0, 10)')
+        .call(xAxis.ticks(6).tickSubdivide(2).tickSize(h-20));
+
+        svg.append('svg:g')
+        .attr('class', 'y axis')
+        .call(yAxis.ticks(6).tickSubdivide(0).tickSize(w - rightMargin));
+
+        svg.append('svg:path')
+        .attr('class', 'line')
+        .attr('d', function (d) { return line1(data); });
+
+        svg.append('svg:path')
+        .attr('class', 'line')
+        .attr('d', function (d) { return line2(data); });
+    }
+}
+
 domready(function () {
     probe(function (server) {
         cubeServer = server;
@@ -343,5 +435,6 @@ domready(function () {
         setInterval(updateLines, 30000);
 
         weekbar();
+        mmarea({ tag: 'temptrend' });
     });
 });

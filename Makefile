@@ -9,7 +9,7 @@ FILES = public/bundle.min.js public/styles.min.css
 
 all: ${FILES}
 
-debug: UGLIFY_FLAGS := -b -ns
+debug: UGLIFY_FLAGS := -b -nm
 debug: LESSC_FLAGS :=
 debug: all
 
