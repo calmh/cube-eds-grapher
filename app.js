@@ -145,16 +145,13 @@ function lines(opts) {
     var yAxis = d3.svg.axis().scale(y).orient('right').tickFormat(yFormat);
 
     d3.json(opts.url, function (data) {
-        var rawData = [];
-        for (var i = 0; i < data.length; i++) {
-            rawData.push(data[i].value || 0);
-        }
+        var data = data.filter(function (x) { return !!x.value; });
         if (opts.transform) {
-            rawData = opts.transform(rawData);
+            var trans = opts.transform(data.map(function (x) { return x.value; }));
+            data = data.map(function (x, i) { x.value = trans[i]; return x; });
         }
-        var maxVal = rawData[0], minVal = rawData[0];
+        var maxVal = data[0].value, minVal = data[0].value;
         for (var i = 0; i < data.length; i++) {
-            data[i].value = rawData[i];
             data[i].time = new Date(data[i].time).getTime();
             maxVal = Math.max(maxVal, data[i].value);
             minVal = Math.min(minVal, data[i].value);
@@ -242,58 +239,56 @@ function weekbar()
     .append("svg:g")
     .attr("transform", "translate(" + p[3] + "," + (h - p[2]) + ")");
 
-    d3.json(cubeServer + '/1.0/metric?expression=sum(reading(impulses))&step=864e5&limit=14',
-            function (data) {
+    d3.json(cubeServer + '/1.0/metric?expression=sum(reading(impulses))&step=864e5&limit=14', function (data) {
+        var rawData = [];
+        var times = [];
+        for (var i = 0; i < data.length; i++) {
+            rawData.push(data[i].value || 0);
+            times.push(new Date(data[i].time).getTime());
+        }
+        var maxVal = rawData[0], minVal = rawData[0];
+        for (var i = 0; i < data.length; i++) {
+            data[i].value = rawData[i];
+            data[i].time = times[i];
+            maxVal = Math.max(maxVal, data[i].value);
+            minVal = Math.min(minVal, data[i].value);
+        }
+        x.domain(times); // [data[0].time, data[data.length - 1].time]);
+        y.domain([0, maxVal]).nice();
 
-                var rawData = [];
-                var times = [];
-                for (var i = 0; i < data.length; i++) {
-                    rawData.push(data[i].value || 0);
-                    times.push(new Date(data[i].time).getTime());
-                }
-                var maxVal = rawData[0], minVal = rawData[0];
-                for (var i = 0; i < data.length; i++) {
-                    data[i].value = rawData[i];
-                    data[i].time = times[i];
-                    maxVal = Math.max(maxVal, data[i].value);
-                    minVal = Math.min(minVal, data[i].value);
-                }
-                x.domain(times); // [data[0].time, data[data.length - 1].time]);
-                y.domain([0, maxVal]).nice();
+        var cause = svg.selectAll("g.cause")
+        .data([data])
+        .enter().append("svg:g")
+        .attr("class", "bars");
 
-                var cause = svg.selectAll("g.cause")
-                .data([data])
-                .enter().append("svg:g")
-                .attr("class", "bars");
+        cause.selectAll("rect")
+        .data(Object)
+        .enter().append("svg:rect")
+        .attr("x", function(d) { return x(d.time); })
+        .attr("y", function (d) { return -y(d.value); })
+        .attr("height", function(d) { return y(d.value); })
+        .attr("width", x.rangeBand());
 
-                cause.selectAll("rect")
-                .data(Object)
-                .enter().append("svg:rect")
-                .attr("x", function(d) { return x(d.time); })
-                .attr("y", function (d) { return -y(d.value); })
-                .attr("height", function(d) { return y(d.value); })
-                .attr("width", x.rangeBand());
+        svg.selectAll("text.bar-amount")
+        .data(data)
+        .enter().append("svg:text")
+        .attr("class", "bar-amount")
+        .attr("x", function (d) { return x(d.time) + x.rangeBand() / 2; })
+        .attr("y", function (d) { return  -y(d.value); })
+        .attr("text-anchor", "middle")
+        .attr("dy", "-.4em")
+        .text(function (d) { return yFormat(d.value); });
 
-                svg.selectAll("text.bar-amount")
-                .data(data)
-                .enter().append("svg:text")
-                .attr("class", "bar-amount")
-                .attr("x", function (d) { return x(d.time) + x.rangeBand() / 2; })
-                .attr("y", function (d) { return  -y(d.value); })
-                .attr("text-anchor", "middle")
-                .attr("dy", "-.4em")
-                .text(function (d) { return yFormat(d.value); });
-
-                svg.selectAll("text.bar-label")
-                .data(data)
-                .enter().append("svg:text")
-                .attr("class", "bar-label")
-                .attr("x", function(d) { return x(d.time) + x.rangeBand() / 2; })
-                .attr("y", 6)
-                .attr("text-anchor", "middle")
-                .attr("dy", ".71em")
-                .text(format);
-            });
+        svg.selectAll("text.bar-label")
+        .data(data)
+        .enter().append("svg:text")
+        .attr("class", "bar-label")
+        .attr("x", function(d) { return x(d.time) + x.rangeBand() / 2; })
+        .attr("y", 6)
+        .attr("text-anchor", "middle")
+        .attr("dy", ".71em")
+        .text(format);
+    });
 }
 
 function mmarea(opts) {
@@ -388,6 +383,99 @@ function mmarea(opts) {
     }
 }
 
+function monthly()
+{
+    var container = d3.select('div#monthly');
+    var w = container.style('width').replace('px', '');
+    var h = container.style('height').replace('px', '');
+    var p = [20, 5, 20, 5];
+    var x = d3.scale.ordinal().rangeRoundBands([0, w - p[1] - p[3]], 0.15);
+    var y = d3.scale.linear().range([0, h - p[0] - p[2]]);
+    var monthNames = [ 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec' ];
+    var format = function (d) { var d = new Date(d.time); return monthNames[d.getMonth()]; };
+    var yFormat = d3.format('.3s');
+
+    var svg = container.append("svg:svg")
+    .attr("width", w)
+    .attr("height", h)
+    .append("svg:g")
+    .attr("transform", "translate(" + p[3] + "," + (h - p[2]) + ")");
+
+    d3.json(cubeServer + '/1.0/metric?expression=sum(reading(impulses))&step=864e5&limit=365', function (data) {
+        var months = [];
+        var monthDates = [];
+        var maxVal = 0;
+        var prevDate;
+        var sum;
+        var count;
+
+        for (var i = 0; i < data.length; i++) {
+            if (data[i].value) {
+                var d = data[i].time.match('^(....-..)')[0];
+                var t = d + '-01T00:00:00.000Z';
+                if (t !== prevDate) {
+                    if (prevDate) {
+                        var val = sum / count;
+                        var dt = new Date(prevDate).getTime();
+                        months.push({ time: dt, value: Math.round(val) });
+                        monthDates.push(dt);
+                        maxVal = Math.max(maxVal, val);
+                    }
+                    prevDate = t;
+                    sum = 0;
+                    count = 0;
+                }
+                sum += data[i].value;
+                count += 1;
+            }
+        }
+
+        if (count) {
+            var val = sum / count;
+            var dt = new Date(t).getTime();
+            months.push({ time: dt, value: Math.round(val) });
+            monthDates.push(dt);
+            maxVal = Math.max(maxVal, val);
+        }
+
+        x.domain(monthDates);
+        y.domain([0, maxVal]).nice();
+
+        var cause = svg.selectAll("g.cause")
+        .data([months])
+        .enter().append("svg:g")
+        .attr("class", "bars");
+
+        cause.selectAll("rect")
+        .data(Object)
+        .enter().append("svg:rect")
+        .attr("x", function(d) { return x(d.time); })
+        .attr("y", function (d) { return -y(d.value); })
+        .attr("height", function(d) { return y(d.value); })
+        .attr("width", x.rangeBand());
+
+        svg.selectAll("text.bar-amount")
+        .data(months)
+        .enter().append("svg:text")
+        .attr("class", "bar-amount")
+        .attr("x", function (d) { return x(d.time) + x.rangeBand() / 2; })
+        .attr("y", function (d) { return  -y(d.value); })
+        .attr("text-anchor", "middle")
+        .attr("dy", "-.4em")
+        .text(function (d) { return yFormat(d.value); });
+
+        svg.selectAll("text.bar-label")
+        .data(months)
+        .enter().append("svg:text")
+        .attr("class", "bar-label")
+        .attr("x", function(d) { return x(d.time) + x.rangeBand() / 2; })
+        .attr("y", 6)
+        .attr("text-anchor", "middle")
+        .attr("dy", ".71em")
+        .text(format);
+    });
+}
+
 domready(function () {
     probe(function (server) {
         cubeServer = server;
@@ -434,7 +522,8 @@ domready(function () {
         updateLines();
         setInterval(updateLines, 30000);
 
-        weekbar();
         mmarea({ tag: 'temptrend' });
+        weekbar();
+        monthly();
     });
 });
