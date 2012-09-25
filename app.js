@@ -1,12 +1,12 @@
 var domready = require('domready');
 var Cube = require('./cubesvr');
+var sprintf = require('sprint');
 
 // --- "Instant" meter ---
 
 var p = 0.015;
 var donut, arcs, svg, label, percentileLabel, maxArc;
 var r, arc, arc2, arc3;
-var pointerColor = d3.scale.linear().range(['green', 'green', 'red']);
 
 function setupInstant() {
     var gauge = d3.select('div#gauge');
@@ -54,7 +54,6 @@ function instant(data) {
     var rem = 100 - cval - pointer;
     arcs = arcs.data(donut([ cval, pointer, rem ]));
 
-    pointerColor = pointerColor.domain([data.v.min, data.v.med, data.v.max]);
     arcs.transition()
     .ease('bounce')
     .duration(500)
@@ -402,10 +401,8 @@ domready(function () {
             data = cube.analyze(data, function (t) {
                 var d = new Date(t);
                 var m = d.getMonth() + 1;
-                if (m < 10) {
-                    m = '0' + m;
-                }
-                return (new Date('' + d.getFullYear() + '-' + m + '-01')).getTime();
+                var y = d.getFullYear();
+                return (new Date(sprintf('%d-%02d-01', y, m))).getTime();
             });
             data = data.aggr.map(function (x) { return [x[0], x[1].sum]; });
             data = cube.analyze(data);
