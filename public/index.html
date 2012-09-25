@@ -1,29 +1,30 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Power Consumption</title>
+        <title>Power & Temperature</title>
         <link rel="stylesheet" href="styles.min.css" />
+        <script src="http://d3js.org/d3.v2.js"></script>
         <script type="text/javascript" src="bundle.min.js"></script>
     </head>
     <body>
         <div id="gauges">
             <div class='group'>
-                <h2>Power Use (instantaneous)</h2>
+                <h2>Power Use (last 60 s)</h2>
                 <div id="gauge"></div>
             </div>
             <div class='group'>
-                <h2>Accumulated Power Use (Wh) (two weeks)</h2>
+                <h2>Average Power Use (W) (two weeks)</h2>
                 <div id="week" class='barGraph'></div>
             </div>
 
             <div class='clear'></div>
 
             <div class='group'>
-                <h2>Power Consumption (W) (3 hours)</h2>
+                <h2>Power Use (W) (3 hours)</h2>
                 <div id="power" class='lineGraph'></div>
             </div>
             <div class='group'>
-                <h2>Power Consumption (W) (36 hours)</h2>
+                <h2>Power Use (W) (36 hours)</h2>
                 <div id="lpower" class='lineGraph'></div>
             </div>
 
@@ -41,7 +42,7 @@
             <div class='clear'></div>
 
             <div class='group'>
-                <h2>Outside Temperature (&deg;C) (60 days)</h2>
+                <h2>Outside Temperature (&deg;C) (long term trend)</h2>
                 <div id="temptrend" class='lineGraph'></div>
             </div>
 

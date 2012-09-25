@@ -1,103 +1,72 @@
 var domready = require('domready');
-var d3 = require('d3');
-var average = require('filters').average;
-var median = require('filters').median;
+var Cube = require('./cubesvr');
 
-var percentiles;
-var donut, arcs, svg, label, percentileLabel, maxArc;
+// --- "Instant" meter ---
+
 var p = 0.015;
+var donut, arcs, svg, label, percentileLabel, maxArc;
 var r, arc, arc2, arc3;
 var pointerColor = d3.scale.linear().range(['green', 'green', 'red']);
-var cubeServer;
-var candidates =  [ 'http://zcube.nym.se:1081', 'http://ext.nym.se:1081' ];
 
-var instantDps = 12; // Ten seconds each, so 12 is a two minute rolling average
-var instantThres = 1.0;
+function setupInstant() {
+    var gauge = d3.select('div#gauge');
 
-function probe(cb) {
-    var found = false;
-    candidates.forEach(function (cand) {
-        d3.json(cand + '/1.0/metric?expression=sum(reading(impulses))&step=3e5&limit=1', function(data) {
-            if (!found && data && data[0] && data[0].value) {
-                found = true;
-                cb(cand);
-            }
-        });
-    });
+    r = Math.round(gauge.style('width').replace('px', '') / 2);
+    arc = d3.svg.arc().innerRadius(Math.round(r * 0.5)).outerRadius(Math.round(r * 0.95));
+    arc2 = d3.svg.arc().innerRadius(Math.round(r * 0.45)).outerRadius(Math.round(r * 0.52));
+    arc3 = d3.svg.arc().innerRadius(Math.round(r * 0.95)).outerRadius(Math.round(r * 1.00));
+
+    donut = d3.layout.pie().sort(null).startAngle(-Math.PI * 0.55).endAngle(Math.PI * 0.55);
+
+    svg = gauge.append('svg:svg')
+    .attr('width', r * 2)
+    .attr('height', r * 1.15)
+    .append('svg:g')
+    .attr('transform', 'translate(' + r + ',' + r + ')');
+
+    arcs = svg.selectAll('path.instant')
+    .data(donut([0, p, 1-p]))
+    .enter().append('svg:path')
+    .attr('class', function (d, i) { return 'instant segment-' + i; })
+    .attr('d', arc);
+
+    label = svg.selectAll('text.centerLabel')
+    .data(['0W'])
+    .enter()
+    .append('svg:text')
+    .attr('class', 'centerLabel')
+    .text(String);
+
+    maxArc = svg.selectAll('path.median').data(donut([0, 0, 99]))
+    .enter().append('svg:path')
+    .attr('class', function (d, i) { return 'median segment-' + i; })
+    .attr('d', arc2);
 }
 
-function load() {
-    d3.json(cubeServer + '/1.0/metric?expression=sum(reading(impulses))*3600%2f300&step=3e5&limit=288',
-            function(data) {
-                var vals = data.map(function (d) { return d.value; });
-                vals = vals.filter(function (v) { return !!v; });
-                vals.sort(function (a, b) { return a - b; });
+function instant(data) {
+    var val = data.data[data.data.length - 1].value;
 
-                percentiles = {
-                    p10: vals[~~(vals.length * 0.1)],
-                    p50: vals[~~(vals.length * 0.5)],
-                    p90: vals[~~(vals.length * 0.9)],
-                    all: vals,
-                };
+    label = label.data([val]).text(function (v) { return Math.round(v) + 'W'; });
 
-                updateInstant(instantDps);
-            });
-}
+    var pointer = p * 100;
+    var cval = val / data.v.max * 100;
+    cval = Math.min(cval, 100 - pointer);
+    var rem = 100 - cval - pointer;
+    arcs = arcs.data(donut([ cval, pointer, rem ]));
 
-function instant(dps, callback) {
-    d3.json(cubeServer + '/1.0/metric?expression=sum(reading(impulses))&step=1e4&limit=' + dps,
-            function(data) {
-                var vals = data.map(function (d) { return d.value; });
-                var avg = average(vals, dps, instantThres);
-                var sum = avg.pop();
-                sum = sum * 3600 / 10;
-                var pct = '>100';
+    pointerColor = pointerColor.domain([data.v.min, data.v.med, data.v.max]);
+    arcs.transition()
+    .ease('bounce')
+    .duration(500)
+    .attrTween('d', tween)
 
-                if (percentiles) {
-                    for (var i = 0; i < percentiles.all.length; i++) {
-                        if (percentiles.all[i] >= sum) {
-                            pct = Math.round(i / percentiles.all.length * 100);
-                            break;
-                        }
-                    }
-                }
+    pointer = 2 * p * 100;
+    var avg = data.v.med / data.v.max * 100;
+    rem = 100 - avg - pointer;
 
-                callback(sum, pct);
-            });
-}
-
-function updateInstant(dps) {
-    instant(dps, function (val, pct) {
-        if (!percentiles) {
-            return;
-        }
-
-        label = label.data([val]).text(function (v) { return Math.round(v) + 'W'; });
-
-        // Instant
-
-        var pointer = p * 100;
-        var cval = val / percentiles.p90 * 100;
-        cval = Math.min(cval, 100 - pointer);
-        var rem = 100 - cval - pointer;
-        arcs = arcs.data(donut([ cval, pointer, rem ]));
-
-        pointerColor = pointerColor.domain([percentiles.p10, percentiles.p50, percentiles.p90]);
-        arcs.transition()
-        .ease('bounce')
-        .duration(500)
-        .attrTween('d', tween)
-
-        // 50th and 95th percentile
-
-        pointer = 2 * p * 100;
-        var avg = percentiles.p50 / percentiles.p90 * 100;
-        rem = 100 - avg - pointer;
-
-        maxArc = maxArc
-        .data(donut([avg, pointer, rem]))
-        .attr('d', arc2);
-    });
+    maxArc = maxArc
+    .data(donut([avg, pointer, rem]))
+    .attr('d', arc2);
 }
 
 var prevVals = {
@@ -117,7 +86,9 @@ function tween(d, i, a) {
     };
 }
 
-function lines(opts) {
+// ---
+
+function lines(data, opts) {
     var container = d3.select('#' + opts.tag);
     var w = container.style('width').replace('px', '');
     var h = container.style('height').replace('px', '');
@@ -144,85 +115,44 @@ function lines(opts) {
     var xAxis = d3.svg.axis().scale(x).orient('bottom').tickFormat(xFormat);
     var yAxis = d3.svg.axis().scale(y).orient('right').tickFormat(yFormat);
 
-    d3.json(opts.url, function (data) {
-        var data = data.filter(function (x) { return !!x.value; });
-        if (opts.transform) {
-            var trans = opts.transform(data.map(function (x) { return x.value; }));
-            data = data.map(function (x, i) { x.value = trans[i]; return x; });
-        }
-        var maxVal = data[0].value, minVal = data[0].value;
-        for (var i = 0; i < data.length; i++) {
-            data[i].time = new Date(data[i].time).getTime();
-            maxVal = Math.max(maxVal, data[i].value);
-            minVal = Math.min(minVal, data[i].value);
-        }
-        x.domain([data[0].time, data[data.length - 1].time]);
-        if (opts.float) {
-            y.domain([minVal, maxVal]).nice();
-        } else {
-            y.domain([0, maxVal]).nice();
-        }
+    x.domain([data.t.min, data.t.max]);
+    if (opts.float) {
+        y.domain([data.v.min, data.v.max]).nice();
+    } else {
+        y.domain([0, data.v.max]).nice();
+    }
 
-        d3.select('#' + opts.tag + '-svg').remove();
+    d3.select('#' + opts.tag + '-svg').remove();
 
-        var svg = container.append('svg:svg')
-        .attr('id', opts.tag + '-svg')
-        .attr('width', w)
-        .attr('height', h);
+    var svg = container.append('svg:svg')
+    .attr('id', opts.tag + '-svg')
+    .attr('width', w)
+    .attr('height', h);
 
-        if (!opts.float) {
-            svg
-            .append('svg:path')
-            .attr('class', 'area')
-            .attr('d', function (d) { return area(data); });
-        }
-
-        svg.append('svg:g')
-        .attr('class', 'x axis')
-        .attr('transform', 'translate(0, 10)')
-        .call(xAxis.ticks(6).tickSubdivide(2).tickSize(h-20));
-
-        svg.append('svg:g')
-        .attr('class', 'y axis')
-        //.attr('transform', 'translate(' + w + ', 0)')
-        .call(yAxis.ticks(6).tickSubdivide(0).tickSize(w - rightMargin));
-
+    if (!opts.float) {
         svg
         .append('svg:path')
-        .attr('class', 'line')
-        .attr('d', function (d) { return line(data); });
-    });
+        .attr('class', 'area')
+        .attr('d', function (d) { return area(data.data); });
+    }
+
+    svg.append('svg:g')
+    .attr('class', 'x axis')
+    .attr('transform', 'translate(0, 10)')
+    .call(xAxis.ticks(6).tickSubdivide(2).tickSize(h-20));
+
+    svg.append('svg:g')
+    .attr('class', 'y axis')
+    //.attr('transform', 'translate(' + w + ', 0)')
+    .call(yAxis.ticks(6).tickSubdivide(0).tickSize(w - rightMargin));
+
+    svg
+    .append('svg:path')
+    .attr('class', 'line')
+    .attr('d', function (d) { return line(data.data); });
 }
 
-function updateLines() {
-    lines({
-        url: cubeServer + '/1.0/metric?expression=sum(reading(impulses))*3600000%2f6e4&step=6e4&limit=180',
-        tag: 'power',
-        transform: function (data) { return median(data); }
-    });
-
-    lines({
-        url: cubeServer + '/1.0/metric?expression=median(reading(temperature))&step=6e4&limit=180',
-        tag: 'temp',
-        float: true,
-        transform: function (data) { return average(data, 3); }
-    });
-
-    lines({
-        url: cubeServer + '/1.0/metric?expression=sum(reading(impulses))*3600000%2f3e5&step=3e5&limit=432',
-        tag: 'lpower',
-        transform: function (data) { return median(data); }
-    });
-
-    lines({
-        url: cubeServer + '/1.0/metric?expression=median(reading(temperature))&step=3e5&limit=432',
-        tag: 'ltemp',
-        float: true,
-        transform: function (data) { return average(data, 3); }
-    });
-}
-
-function weekbar()
+function weekbar(data)
 {
     var container = d3.select('div#week');
     var w = container.style('width').replace('px', '');
@@ -239,25 +169,12 @@ function weekbar()
     .append("svg:g")
     .attr("transform", "translate(" + p[3] + "," + (h - p[2]) + ")");
 
-    d3.json(cubeServer + '/1.0/metric?expression=sum(reading(impulses))&step=864e5&limit=14', function (data) {
-        var rawData = [];
-        var times = [];
-        for (var i = 0; i < data.length; i++) {
-            rawData.push(data[i].value || 0);
-            times.push(new Date(data[i].time).getTime());
-        }
-        var maxVal = rawData[0], minVal = rawData[0];
-        for (var i = 0; i < data.length; i++) {
-            data[i].value = rawData[i];
-            data[i].time = times[i];
-            maxVal = Math.max(maxVal, data[i].value);
-            minVal = Math.min(minVal, data[i].value);
-        }
-        x.domain(times); // [data[0].time, data[data.length - 1].time]);
-        y.domain([0, maxVal]).nice();
+    var times = data.data.map(function (x) { return x.time; });
+        x.domain(times);
+        y.domain([0, data.v.max]).nice();
 
         var cause = svg.selectAll("g.cause")
-        .data([data])
+        .data([data.data])
         .enter().append("svg:g")
         .attr("class", "bars");
 
@@ -270,7 +187,7 @@ function weekbar()
         .attr("width", x.rangeBand());
 
         svg.selectAll("text.bar-amount")
-        .data(data)
+        .data(data.data)
         .enter().append("svg:text")
         .attr("class", "bar-amount")
         .attr("x", function (d) { return x(d.time) + x.rangeBand() / 2; })
@@ -280,7 +197,7 @@ function weekbar()
         .text(function (d) { return yFormat(d.value); });
 
         svg.selectAll("text.bar-label")
-        .data(data)
+        .data(data.data)
         .enter().append("svg:text")
         .attr("class", "bar-label")
         .attr("x", function(d) { return x(d.time) + x.rangeBand() / 2; })
@@ -288,11 +205,9 @@ function weekbar()
         .attr("text-anchor", "middle")
         .attr("dy", ".71em")
         .text(format);
-    });
 }
 
-function mmarea(opts) {
-    var url = cubeServer + '/1.0/metric?expression={expr}(reading(temperature))&step=864e5&limit=60';
+function mmarea(data, opts) {
     var container = d3.select('#' + opts.tag);
     var w = container.style('width').replace('px', '');
     var h = container.style('height').replace('px', '');
@@ -302,88 +217,81 @@ function mmarea(opts) {
     var x = d3.time.scale().range([0, w - rightMargin]),
     y = d3.scale.linear().range([h-13, 10]);
 
-    var area = d3.svg.area()
+    var area1 = d3.svg.area()
     .interpolate('monotone')
-    .x(function(d) { return x(d.time); })
-    .y0(function(d) { return y(d.min); })
-    .y1(function(d) { return y(d.max); });
+    .x(function(d) { return x(d[0]); })
+    .y0(function(d) { return y(d[1].min); })
+    .y1(function(d) { return y(d[1].med); });
+
+    var area2 = d3.svg.area()
+    .interpolate('monotone')
+    .x(function(d) { return x(d[0]); })
+    .y0(function(d) { return y(d[1].med); })
+    .y1(function(d) { return y(d[1].max); });
 
     var line1 = d3.svg.line()
     .interpolate('monotone')
-    .x(function(d) { return x(d.time); })
-    .y(function(d) { return y(d.min); });
+    .x(function(d) { return x(d[0]); })
+    .y(function(d) { return y(d[1].min); });
 
     var line2 = d3.svg.line()
     .interpolate('monotone')
-    .x(function(d) { return x(d.time); })
-    .y(function(d) { return y(d.max); });
+    .x(function(d) { return x(d[0]); })
+    .y(function(d) { return y(d[1].max); });
 
-    //var xFormat = d3.time.format('%H:%M');
     var xFormat = function (d) { var d = new Date(d); return d.getDate() + '/' + (d.getMonth() + 1); };
     var yFormat = d3.format('.3s');
     var xAxis = d3.svg.axis().scale(x).orient('bottom').tickFormat(xFormat);
     var yAxis = d3.svg.axis().scale(y).orient('right').tickFormat(yFormat);
 
-    var data = [];
-    var waiting = 2;
+    x.domain([data.t.min, data.t.max]);
+    y.domain([data.v.min - 2, data.v.max + 2]).nice();
 
-    ['max', 'min'].forEach(function (expr) {
-        var realurl = url.replace('{expr}', expr);
-        d3.json(realurl, function (md) {
-            for (var i = 0; i < md.length; i++) {
-                data[i] = data[i] || { time: md[i].time, max: null, min: null };
-                data[i][expr] = md[i].value;
-            }
+    d3.select('#' + opts.tag + '-svg').remove();
 
-            if (--waiting === 0) {
-                done();
-            }
-        });
-    });
+    var svg = container.append('svg:svg')
+    .attr('id', opts.tag + '-svg')
+    .attr('width', w)
+    .attr('height', h);
 
-    function done() {
-        data = data.filter(function (i) { return i.min !== null && i.max !== null; });
-        var maxVal = data[0].max, minVal = data[0].min;
-        for (var i = 0; i < data.length; i++) {
-            data[i].time = new Date(data[i].time).getTime();
-            maxVal = Math.max(maxVal, data[i].max);
-            minVal = Math.min(minVal, data[i].min);
-        }
+    svg.append('svg:path')
+    .attr('class', 'area1')
+    .attr('d', function (d) { return area1(data.aggr); });
 
-        x.domain([data[0].time, data[data.length - 1].time]);
-        y.domain([0, maxVal]).nice();
+    svg.append('svg:path')
+    .attr('class', 'area2')
+    .attr('d', function (d) { return area2(data.aggr); });
 
-        d3.select('#' + opts.tag + '-svg').remove();
+    svg.append('svg:g')
+    .attr('class', 'x axis')
+    .attr('transform', 'translate(0, 10)')
+    .call(xAxis.ticks(6).tickSubdivide(2).tickSize(h-20));
 
-        var svg = container.append('svg:svg')
-        .attr('id', opts.tag + '-svg')
-        .attr('width', w)
-        .attr('height', h);
+    svg.append('svg:g')
+    .attr('class', 'y axis')
+    .call(yAxis.ticks(6).tickSubdivide(0).tickSize(w - rightMargin));
 
-        svg.append('svg:path')
-        .attr('class', 'area')
-        .attr('d', function (d) { return area(data); });
+    svg.append('svg:path')
+    .attr('class', 'line')
+    .attr('d', function (d) { return line1(data.aggr); });
 
-        svg.append('svg:g')
-        .attr('class', 'x axis')
-        .attr('transform', 'translate(0, 10)')
-        .call(xAxis.ticks(6).tickSubdivide(2).tickSize(h-20));
-
-        svg.append('svg:g')
-        .attr('class', 'y axis')
-        .call(yAxis.ticks(6).tickSubdivide(0).tickSize(w - rightMargin));
-
-        svg.append('svg:path')
-        .attr('class', 'line')
-        .attr('d', function (d) { return line1(data); });
-
-        svg.append('svg:path')
-        .attr('class', 'line')
-        .attr('d', function (d) { return line2(data); });
-    }
+    svg.append('svg:path')
+    .attr('class', 'line')
+    .attr('d', function (d) { return line2(data.aggr); });
 }
 
-function monthly()
+function objKeys(obj)
+{
+    var keys = [];
+    for(var i in obj) {
+        if (this.hasOwnProperty(i)) {
+            keys.push(i);
+        }
+    }
+    return keys;
+}
+
+function monthly(data)
 {
     var container = d3.select('div#monthly');
     var w = container.style('width').replace('px', '');
@@ -401,129 +309,122 @@ function monthly()
     .append("svg:g")
     .attr("transform", "translate(" + p[3] + "," + (h - p[2]) + ")");
 
-    d3.json(cubeServer + '/1.0/metric?expression=sum(reading(impulses))&step=864e5&limit=365', function (data) {
-        var months = [];
-        var monthDates = [];
-        var maxVal = 0;
-        var prevDate;
-        var sum;
-        var count;
+    var monthDates = data.data.map(function (x) { return x.time; });
+    x.domain(monthDates);
+    y.domain([0, data.v.max]).nice(); // FIXME
 
-        for (var i = 0; i < data.length; i++) {
-            if (data[i].value) {
-                var d = data[i].time.match('^(....-..)')[0];
-                var t = d + '-01T00:00:00.000Z';
-                if (t !== prevDate) {
-                    if (prevDate) {
-                        var val = sum / count;
-                        var dt = new Date(prevDate).getTime();
-                        months.push({ time: dt, value: Math.round(val) });
-                        monthDates.push(dt);
-                        maxVal = Math.max(maxVal, val);
-                    }
-                    prevDate = t;
-                    sum = 0;
-                    count = 0;
-                }
-                sum += data[i].value;
-                count += 1;
-            }
-        }
+    var cause = svg.selectAll("g.cause")
+    .data([data.data])
+    .enter().append("svg:g")
+    .attr("class", "bars");
 
-        if (count) {
-            var val = sum / count;
-            var dt = new Date(t).getTime();
-            months.push({ time: dt, value: Math.round(val) });
-            monthDates.push(dt);
-            maxVal = Math.max(maxVal, val);
-        }
+    cause.selectAll("rect")
+    .data(Object)
+    .enter().append("svg:rect")
+    .attr("x", function(d) { return x(d.time); })
+    .attr("y", function (d) { return -y(d.value); })
+    .attr("height", function(d) { return y(d.value); })
+    .attr("width", x.rangeBand());
 
-        x.domain(monthDates);
-        y.domain([0, maxVal]).nice();
+    svg.selectAll("text.bar-amount")
+    .data(data.data)
+    .enter().append("svg:text")
+    .attr("class", "bar-amount")
+    .attr("x", function (d) { return x(d.time) + x.rangeBand() / 2; })
+    .attr("y", function (d) { return  -y(d.value); })
+    .attr("text-anchor", "middle")
+    .attr("dy", "-.4em")
+    .text(function (d) { return yFormat(d.value); });
 
-        var cause = svg.selectAll("g.cause")
-        .data([months])
-        .enter().append("svg:g")
-        .attr("class", "bars");
+    svg.selectAll("text.bar-label")
+    .data(data.data)
+    .enter().append("svg:text")
+    .attr("class", "bar-label")
+    .attr("x", function(d) { return x(d.time) + x.rangeBand() / 2; })
+    .attr("y", 6)
+    .attr("text-anchor", "middle")
+    .attr("dy", ".71em")
+    .text(format);
+}
 
-        cause.selectAll("rect")
-        .data(Object)
-        .enter().append("svg:rect")
-        .attr("x", function(d) { return x(d.time); })
-        .attr("y", function (d) { return -y(d.value); })
-        .attr("height", function(d) { return y(d.value); })
-        .attr("width", x.rangeBand());
-
-        svg.selectAll("text.bar-amount")
-        .data(months)
-        .enter().append("svg:text")
-        .attr("class", "bar-amount")
-        .attr("x", function (d) { return x(d.time) + x.rangeBand() / 2; })
-        .attr("y", function (d) { return  -y(d.value); })
-        .attr("text-anchor", "middle")
-        .attr("dy", "-.4em")
-        .text(function (d) { return yFormat(d.value); });
-
-        svg.selectAll("text.bar-label")
-        .data(months)
-        .enter().append("svg:text")
-        .attr("class", "bar-label")
-        .attr("x", function(d) { return x(d.time) + x.rangeBand() / 2; })
-        .attr("y", 6)
-        .attr("text-anchor", "middle")
-        .attr("dy", ".71em")
-        .text(format);
-    });
+function next(intv) {
+    var now = Date.now();
+    return Math.ceil(now / intv) * intv - now;
 }
 
 domready(function () {
-    probe(function (server) {
-        cubeServer = server;
-        var gauge = d3.select('div#gauge');
+    setupInstant();
+    var cube = new Cube();
 
-        r = Math.round(gauge.style('width').replace('px', '') / 2);
-        arc = d3.svg.arc().innerRadius(Math.round(r * 0.5)).outerRadius(Math.round(r * 0.95));
-        arc2 = d3.svg.arc().innerRadius(Math.round(r * 0.45)).outerRadius(Math.round(r * 0.52));
-        arc3 = d3.svg.arc().innerRadius(Math.round(r * 0.95)).outerRadius(Math.round(r * 1.00));
+    function updateLines() {
+        cube.getPower('6e4', 180, function (data) {
+            data = cube.analyze(data);
+            lines(data, {tag: 'power'});
+        });
 
-        load();
-        setInterval(load, 600 * 1000);
+        cube.getPower('3e5', 432, function (data) {
+            data = cube.analyze(data);
+            lines(data, {tag: 'lpower'});
+        });
 
-        donut = d3.layout.pie().sort(null).startAngle(-Math.PI * 0.55).endAngle(Math.PI * 0.55);
+        cube.getTemperature('6e4', 180, function (data) {
+            data = cube.analyze(data);
+            lines(data, {tag: 'temp', float: true});
+        });
 
-        svg = gauge.append('svg:svg')
-        .attr('width', r * 2)
-        .attr('height', r * 1.15)
-        .append('svg:g')
-        .attr('transform', 'translate(' + r + ',' + r + ')');
+        cube.getTemperature('3e5', 432, function (data) {
+            data = cube.analyze(data);
+            lines(data, {tag: 'ltemp', float: true});
+        });
 
-        arcs = svg.selectAll('path.instant')
-        .data(donut([0, p, 1-p]))
-        .enter().append('svg:path')
-        .attr('class', function (d, i) { return 'instant segment-' + i; })
-        .attr('d', arc);
+        setTimeout(updateLines, next(60000) + 5000);
+    }
 
-        label = svg.selectAll('text.centerLabel')
-        .data(['0W'])
-        .enter()
-        .append('svg:text')
-        .attr('class', 'centerLabel')
-        .text(String);
+    function updateTemperatureTrend() {
+        cube.getTemperature('36e5', 24*30*12, function (data) {
+            var step = 7 * 86400 * 1000; // ms
+            data = cube.analyze(data, function (t) { return Math.ceil(t / step) * step; });
+            mmarea(data, {tag: 'temptrend'});
+        });
+    }
 
-        maxArc = svg.selectAll('path.median').data(donut([0, 0, 99]))
-        .enter().append('svg:path')
-        .attr('class', function (d, i) { return 'median segment-' + i; })
-        .attr('d', arc2);
+    function updateInstant() {
+        cube.getPower('6e4', 60, function (data) {
+            data = cube.analyze(data);
+            instant(data);
+        });
 
-        setInterval(function () {
-            updateInstant(instantDps);
-        }, 5000);
+        setTimeout(updateInstant, next(60000) + 2500);
+    }
 
+    function updateMonthlyPower() {
+        cube.getPower('864e5', 365, function (data) {
+            data = cube.analyze(data, function (t) {
+                var d = new Date(t);
+                var m = d.getMonth() + 1;
+                if (m < 10) {
+                    m = '0' + m;
+                }
+                return (new Date('' + d.getFullYear() + '-' + m + '-01')).getTime();
+            });
+            data = data.aggr.map(function (x) { return [x[0], x[1].sum]; });
+            data = cube.analyze(data);
+            monthly(data);
+        });
+    }
+
+    function updateDailyPower() {
+        cube.getPower('864e5', 14, function (data) {
+            data = cube.analyze(data);
+            weekbar(data);
+        });
+    }
+
+    cube.probe(['http://zcube.nym.se:1081', 'http://ext.nym.se:1081'], function () {
+        updateInstant();
+        updateDailyPower();
         updateLines();
-        setInterval(updateLines, 30000);
-
-        mmarea({ tag: 'temptrend' });
-        weekbar();
-        monthly();
+        updateTemperatureTrend();
+        updateMonthlyPower();
     });
 });
