@@ -356,24 +356,34 @@ domready(function () {
     var cube = new Cube();
 
     function updateLines() {
+        var lintv = 10 /*mins*/ * 60 * 1000;
         cube.getPower('6e4', 180, function (data) {
             data = cube.analyze(data);
-            lines(data, {tag: 'power'});
-        });
 
-        cube.getPower('3e5', 432, function (data) {
-            data = cube.analyze(data);
-            lines(data, {tag: 'lpower'});
+            cube.getPower('3e5', 576, function (ldata) {
+                ldata = cube.analyze(ldata, function (t) { return Math.floor(t / lintv) * lintv; });
+                ldata.data = ldata.aggr.map(function (x) { return { time: x[0], value: x[1].sum / x[1].cnt }; });
+                ldata.v.max = Math.max.apply(null, ldata.data.map(function (x) { return x.value; }));
+                ldata.v.max = data.v.max = Math.max(ldata.v.max, data.v.max);
+
+                lines(data, {tag: 'power'});
+                lines(ldata, {tag: 'lpower'});
+            });
         });
 
         cube.getTemperature('6e4', 180, function (data) {
             data = cube.analyze(data);
-            lines(data, {tag: 'temp', float: true});
-        });
+            cube.getTemperature('3e5', 576, function (ldata) {
+                ldata = cube.analyze(ldata, function (t) { return Math.floor(t / lintv) * lintv; });
+                ldata.data = ldata.aggr.map(function (x) { return { time: x[0], value: x[1].sum / x[1].cnt }; });
+                ldata.v.max = Math.max.apply(null, ldata.data.map(function (x) { return x.value; }));
+                ldata.v.min = Math.min.apply(null, ldata.data.map(function (x) { return x.value; }));
+                ldata.v.max = data.v.max = Math.max(ldata.v.max, data.v.max);
+                ldata.v.min = data.v.min = Math.min(ldata.v.min, data.v.min);
 
-        cube.getTemperature('3e5', 432, function (data) {
-            data = cube.analyze(data);
-            lines(data, {tag: 'ltemp', float: true});
+                lines(data, {tag: 'temp', float: true});
+                lines(ldata, {tag: 'ltemp', float: true});
+            });
         });
 
         setTimeout(updateLines, next(60000) + 5000);
