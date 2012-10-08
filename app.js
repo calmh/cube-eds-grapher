@@ -169,41 +169,41 @@ function weekbar(data)
     .attr("transform", "translate(" + p[3] + "," + (h - p[2]) + ")");
 
     var times = data.data.map(function (x) { return x.time; });
-        x.domain(times);
-        y.domain([0, data.v.max]).nice();
+    x.domain(times);
+    y.domain([0, data.v.max]).nice();
 
-        var cause = svg.selectAll("g.cause")
-        .data([data.data])
-        .enter().append("svg:g")
-        .attr("class", "bars");
+    var cause = svg.selectAll("g.cause")
+    .data([data.data])
+    .enter().append("svg:g")
+    .attr("class", "bars");
 
-        cause.selectAll("rect")
-        .data(Object)
-        .enter().append("svg:rect")
-        .attr("x", function(d) { return x(d.time); })
-        .attr("y", function (d) { return -y(d.value); })
-        .attr("height", function(d) { return y(d.value); })
-        .attr("width", x.rangeBand());
+    cause.selectAll("rect")
+    .data(Object)
+    .enter().append("svg:rect")
+    .attr("x", function(d) { return x(d.time); })
+    .attr("y", function (d) { return -y(d.value); })
+    .attr("height", function(d) { return y(d.value); })
+    .attr("width", x.rangeBand());
 
-        svg.selectAll("text.bar-amount")
-        .data(data.data)
-        .enter().append("svg:text")
-        .attr("class", "bar-amount")
-        .attr("x", function (d) { return x(d.time) + x.rangeBand() / 2; })
-        .attr("y", function (d) { return  -y(d.value); })
-        .attr("text-anchor", "middle")
-        .attr("dy", "-.4em")
-        .text(function (d) { return yFormat(d.value); });
+    svg.selectAll("text.bar-amount")
+    .data(data.data)
+    .enter().append("svg:text")
+    .attr("class", "bar-amount")
+    .attr("x", function (d) { return x(d.time) + x.rangeBand() / 2; })
+    .attr("y", function (d) { return  -y(d.value); })
+    .attr("text-anchor", "middle")
+    .attr("dy", "-.4em")
+    .text(function (d) { return yFormat(d.value); });
 
-        svg.selectAll("text.bar-label")
-        .data(data.data)
-        .enter().append("svg:text")
-        .attr("class", "bar-label")
-        .attr("x", function(d) { return x(d.time) + x.rangeBand() / 2; })
-        .attr("y", 6)
-        .attr("text-anchor", "middle")
-        .attr("dy", ".71em")
-        .text(format);
+    svg.selectAll("text.bar-label")
+    .data(data.data)
+    .enter().append("svg:text")
+    .attr("class", "bar-label")
+    .attr("x", function(d) { return x(d.time) + x.rangeBand() / 2; })
+    .attr("y", 6)
+    .attr("text-anchor", "middle")
+    .attr("dy", ".71em")
+    .text(format);
 }
 
 function mmarea(data, opts) {
@@ -412,7 +412,7 @@ domready(function () {
                 var y = d.getFullYear();
                 return (new Date(sprintf('%d-%02d-01', y, m))).getTime();
             });
-            data = data.aggr.map(function (x) { return [x[0], x[1].sum]; });
+            data = data.aggr.map(function (x) { return [x[0], x[1].sum / x[1].cnt]; });
             data = cube.analyze(data);
             monthly(data);
         });
