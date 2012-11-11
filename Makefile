@@ -16,8 +16,8 @@ debug: all
 clean:
 	rm -f ${FILES}
 
-bundle.js: app.js
-	${BROWSERIFY} $^ -o $@
+bundle.js: app.js cubesvr.js
+	${BROWSERIFY} $< -o $@
 
 public/bundle.min.js: bundle.js
 	${UGLIFY} ${UGLIFY_FLAGS} $^ > $@

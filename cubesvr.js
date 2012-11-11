@@ -108,7 +108,6 @@ function probe(candidates, cb) {
 function getData(path, cb) {
     var self = this;
     self.get(self.host + path, function (data) {
-        //data = data.filter(function (o) { return !!o.value; });
         data = data.map(function (o) { return [(new Date(o.time)).getTime(), o.value]; });
         cb(data);
     });
@@ -120,7 +119,7 @@ function getPower(step, count, cb) {
 
 function getTemperature(step, count, cb) {
     this.getData('/1.0/metric?expression=median(reading(temperature))&step=' + step + '&limit=' + count, function (data) {
-        data = data.filter(function (x) { return !!x[1]; });
+        data = data.filter(function (x) { return x[1] !== null && !isNaN(x[1]); });
         cb(data);
     });
 }
@@ -130,7 +129,6 @@ function byWeek(k) {
     var y = d.getFullYear();
     var w = getWeek(d);
     return sprintf('%d-%02d', y, w);
-    //return Math.floor(k / (1000 * 86400 * 3));
 }
 
 function getWeeklyTemperature(cb) {
