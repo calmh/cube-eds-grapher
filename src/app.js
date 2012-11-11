@@ -426,7 +426,8 @@ domready(function () {
         });
     }
 
-    cube.probe(['http://zcube.nym.se:1081', 'http://ext.nym.se:1081'], function () {
+    // cubeUrls comes from config.js
+    cube.probe(cubeUrls, function () {
         updateInstant();
         updateDailyPower();
         updateLines();
