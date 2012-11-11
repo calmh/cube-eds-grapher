@@ -7,23 +7,29 @@ LESSC_FLAGS = --yui-compress
 
 FILES = public/bundle.min.js public/styles.min.css
 
-all: ${FILES}
+all: node_modules ${FILES}
 
 debug: UGLIFY_FLAGS := -b -nm
 debug: LESSC_FLAGS :=
 debug: all
 
 clean:
-	rm -f ${FILES}
+	rm -rf ${FILES} build
 
-bundle.js: app.js cubesvr.js
+node_modules:
+	npm install
+
+build:
+	mkdir build
+
+build/bundle.js: src/app.js src/cubesvr.js build
 	${BROWSERIFY} $< -o $@
 
-public/bundle.min.js: bundle.js
+public/bundle.min.js: build/bundle.js
 	${UGLIFY} ${UGLIFY_FLAGS} $^ > $@
 
-styles.css: styles.less
-	${LESSC} $^ > $@
+build/styles.css: src/styles.less build
+	${LESSC} $< > $@
 
-public/styles.min.css: styles.css
+public/styles.min.css: build/styles.css
 	${LESSC} ${LESSC_FLAGS} $^ > $@
