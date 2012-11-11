@@ -1,6 +1,5 @@
 .*.swp
-bundle.js
+build
 node_modules
 public/bundle.min.js
 public/styles.min.css
-styles.css
