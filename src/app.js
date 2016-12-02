@@ -389,7 +389,7 @@ domready(function () {
 
     function updateTemperatureTrend() {
         cube.getTemperature('36e5', 24*30*12, function (data) {
-            var step = 7 * 86400 * 1000; // ms
+            var step = 30 * 86400 * 1000; // ms
             var offs = 3 * 86400 * 1000; // 1970-01-01 was a thursday :(
             data = cube.analyze(data, function (t) { return Math.ceil((t + offs)/ step) * step - offs; });
             mmarea(data, {tag: 'temptrend'});
